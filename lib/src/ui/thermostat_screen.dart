@@ -1,5 +1,12 @@
+import 'dart:async';
+import 'dart:convert';
+import 'package:socket_io_client/socket_io_client.dart' as IO;
+import 'package:http/http.dart' as http;
 import 'package:flutter/material.dart';
-import 'package:thermostat/thermostat.dart';
+import 'package:thermostat/src/models/thermometer_value.dart';
+import 'package:thermostat/src/ui/thermostat.dart';
+import '../blocs/thermometer_bloc.dart';
+
 
 class ThermostatScreen extends StatefulWidget {
   @override
@@ -7,18 +14,50 @@ class ThermostatScreen extends StatefulWidget {
 }
 
 class _ThermostatScreenState extends State<ThermostatScreen> {
+  IO.Socket socket ;
+
   static const textColor = const Color(0xFFFFFFFD);
 
   bool _turnOn;
+  double room_state=0;
+
+  StreamController<int> target_degree_stream_controller=StreamController<int>();
 
   @override
   void initState() {
     _turnOn = true;
+    socket = IO.io('http://thermostat-server.herokuapp.com', <String, dynamic>{
+      'transports': ['websocket'],
+      'extraHeaders': {'foo': 'bar'} // optional
+    });
+    socket.on('connect', (_) {
+      print('connect');
+    });
+    socket.on('event', (data) => print(data));
+    socket.on('disconnect', (_) => print('disconnect'));
+    socket.on('fromServer', (_) => print(_));
+    socket.on('room_state', (data) {
+      setState(() {
+
+        room_state=double.parse(data["value"]["\$numberDecimal"]);
+        _turnOn=data["is_working"];
+      });
+    });
+    socket.on('target_degree', (data) {
+      setState(() {
+        target_degree_stream_controller.sink.add(int.parse(data["value"]["\$numberDecimal"]));
+      });
+    });
     super.initState();
+
+
+
   }
+
 
   @override
   Widget build(BuildContext context) {
+    bloc.fetchAllValues();
     return new Scaffold(
       body: new Container(
         decoration: BoxDecoration(
@@ -34,32 +73,20 @@ class _ThermostatScreenState extends State<ThermostatScreen> {
         ),
         child: new SafeArea(
           child: new Column(
+             crossAxisAlignment: CrossAxisAlignment.center,
             children: <Widget>[
               new Container(
                 height: 52.0,
                 child: new Row(
                   children: <Widget>[
-                    new Container(
-                      width: 48.0,
-                      alignment: Alignment.center,
-                      child: new Icon(
-                        Icons.keyboard_backspace,
-                        color: textColor,
-                      ),
-                    ),
-                    new Container(
-                      width: 1.0,
-                      color: textColor,
-                      margin: const EdgeInsets.only(left: 10.0, right: 10.0),
-                    ),
                     new Expanded(
                       child: new Column(
                         mainAxisSize: MainAxisSize.max,
                         mainAxisAlignment: MainAxisAlignment.end,
-                        crossAxisAlignment: CrossAxisAlignment.start,
+                        crossAxisAlignment: CrossAxisAlignment.center,
                         children: <Widget>[
                           new Text(
-                            'Thermostat',
+                            'Home - Çavuşoğlu',
                             style: const TextStyle(
                               color: textColor,
                               fontSize: 16.0,
@@ -67,7 +94,7 @@ class _ThermostatScreenState extends State<ThermostatScreen> {
                             ),
                           ),
                           new Text(
-                            'Living Room',
+                            '',
                             style: const TextStyle(
                               color: textColor,
                               fontSize: 12.0,
@@ -77,51 +104,67 @@ class _ThermostatScreenState extends State<ThermostatScreen> {
                         ],
                       ),
                     ),
-                    new Column(
-                      mainAxisSize: MainAxisSize.max,
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: <Widget>[
-                        new InfoIcon(
-                          icon: new Icon(
-                            Icons.beach_access,
-                            color: const Color(0xFFA9A6AF),
-                            size: 16.0,
-                          ),
-                          text: '27 C',
-                        ),
-                        new SizedBox(height: 5.0),
-                        InfoIcon(
-                          icon: new Icon(
-                            Icons.invert_colors,
-                            color: const Color(0xFFA9A6AF),
-                            size: 16.0,
-                          ),
-                          text: '80.6 F',
-                        ),
-                      ],
-                    )
                   ],
                 ),
               ),
+
               new Expanded(
                 child: new Center(
-                  child: new Thermostat(
-                    radius: 150.0,
-                    turnOn: _turnOn,
-                    modeIcon: Icon(
-                      Icons.ac_unit,
-                      color: Color(0xFF3CAEF4),
-                    ),
-                    textStyle: new TextStyle(
-                      color: textColor,
-                      fontSize: 34.0,
-                    ),
-                    minValue: 18,
-                    maxValue: 38,
-                    initialValue: 26,
-                    onValueChanged: (value) {
-                      print('Selected value : $value');
-                    },
+                  child: StreamBuilder<int>(
+                    stream: target_degree_stream_controller.stream,
+                    builder: (context, snapshot) {
+                      if(!snapshot.hasData)
+                        return new Container();
+                      return new Thermostat(
+                        radius: 150.0,
+                        turnOn: _turnOn,
+                        modeIcon: Icon(
+                          Icons.wb_sunny,
+                          color: Color(0xFF3CAEF4),
+                        ),
+                        textStyle: new TextStyle(
+                          color: textColor,
+                          fontSize: 34.0,
+                        ),
+                        minValue: 15,
+                        maxValue: 28,
+                        initialValue: snapshot.data,
+                        onValueChanged: (value) {
+                          final Map<String, dynamic> data = new Map<String, dynamic>();
+                          data['value'] =value;
+                          socket.emit('target_degree',data);
+                        },
+                      );
+                    }
+                  ),
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.all(12.0),
+                child: new Container(
+                  height: 100.0,
+                  child: new Row(
+                    children: <Widget>[
+                      new Expanded(
+                        child: new  Column(
+                          mainAxisSize: MainAxisSize.max,
+                          mainAxisAlignment: MainAxisAlignment.end,
+                          crossAxisAlignment: CrossAxisAlignment.center,
+                          children: <Widget>[
+                            Icon(
+                              Icons.home,
+                              color: const Color(0xFFA9A6AF),
+                              size: 40.0,
+                            )
+                            ,
+                            Text(room_state.toString()+ "°C",style: const TextStyle(
+                              color: const Color(0xFFA9A6AF),
+                              fontSize: 28.0,
+                            )),
+                          ],
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ),
@@ -141,26 +184,30 @@ class _ThermostatScreenState extends State<ThermostatScreen> {
                         Icons.ac_unit,
                         color: _turnOn ? Color(0xFF4EC4EC) : Colors.white,
                       ),
-                      text: 'Cooling',
+                      text: 'Durdur',
                       onTap: () {
                         setState(() {
+
+
+
+
                           _turnOn = !_turnOn;
                         });
                       },
                     ),
-                    BottomButton(
-                      icon: new Icon(
-                        Icons.invert_colors,
-                        color: Colors.white,
-                      ),
-                      text: 'Fan',
-                    ),
+//                    BottomButton(
+//                      icon: new Icon(
+//                        Icons.invert_colors,
+//                        color: Colors.white,
+//                      ),
+//                      text: 'Fan',
+//                    ),
                     BottomButton(
                       icon: new Icon(
                         Icons.schedule,
                         color: Colors.white,
                       ),
-                      text: 'Schedule',
+                      text: 'Haftalık Plan',
                     ),
                   ],
                 ),

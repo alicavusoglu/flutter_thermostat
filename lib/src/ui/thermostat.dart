@@ -17,6 +17,7 @@ class Thermostat extends StatefulWidget {
   final Color thumbColor;
   final Color dividerColor;
   final Color turnOnColor;
+  final Color turnOffColor;
   final bool turnOn;
   final Widget modeIcon;
   final int minValue;
@@ -32,7 +33,8 @@ class Thermostat extends StatefulWidget {
     this.tickColor = const Color(0xFFD5D9F0),
     this.thumbColor = const Color(0xFFF3F4FA),
     this.dividerColor = const Color(0xFF3F5BFA),
-    this.turnOnColor = const Color(0xFF66f475),
+    this.turnOnColor = const Color(0xFFef2018),
+    this.turnOffColor = const Color(0xFF66f475),
     @required this.turnOn,
     @required this.modeIcon,
     @required this.minValue,
@@ -126,7 +128,17 @@ class _ThermostatState extends State<Thermostat>
                           )
                         ],
                       )
-                    : null,
+                    : new BoxDecoration(
+                  color: widget.turnOffColor,
+                  shape: BoxShape.circle,
+                  boxShadow: [
+                    new BoxShadow(
+                      color: widget.turnOffColor,
+                      blurRadius: 4.0,
+                      offset: const Offset(0.0, 3.0),
+                    )
+                  ],
+                ),
               ),
             ),
             new Center(
@@ -162,6 +174,8 @@ class _ThermostatState extends State<Thermostat>
   void _handleChange() {
     setState(() {
       // The listenable's state is our build state, and it changed already.
+
+
     });
   }
 

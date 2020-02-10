@@ -1,19 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:thermostat/thermostat_screen.dart';
+import 'package:thermostat/src/app.dart';
+import 'package:thermostat/src/ui/thermostat_screen.dart';
 
-void main() => runApp(MyApp());
+void main() => runApp(App());
 
-class MyApp extends StatelessWidget {
-  // This widget is the root of your application.
-  @override
-  Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'Flutter Demo',
-      theme: ThemeData(
-        primarySwatch: Colors.blue,
-      ),
-      home: ThermostatScreen(),
-    );
-  }
-}
+
 
