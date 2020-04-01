@@ -27,8 +27,7 @@ class _ThermostatScreenState extends State<ThermostatScreen> {
   void initState() {
     _turnOn = true;
     socket = IO.io('http://thermostat-server.herokuapp.com', <String, dynamic>{
-      'transports': ['websocket'],
-      'extraHeaders': {'foo': 'bar'} // optional
+      'transports': ['websocket'] // optional
     });
     socket.on('connect', (_) {
       print('connect');
